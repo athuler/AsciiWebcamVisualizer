@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>ASCII Webcam Renderer</title>
+	<style type="text/css">
+		#ascii-container {
+			font-family: Courier, monospace;
+			font-size: 10px;
+		}
+		
+		body {
+			text-align: center;
+		}
+		
+		button {
+			width: 150px;
+			height: 50px;
+			font-size: 20px;
+		}
+	</style>
+</head>
+<body>
+	<h1>ASCII Webcam Visualization</h1>
+	<button id="freezeBtn">Freeze Me!</button>
+	<button onclick="refreshPage();">Restart</button>
+	<br/><br/>
+	
+	<div id="ascii-container" style=""></div>
+	<canvas id="canvas" style="display:none;"></canvas>
+	<div id="ascii-div"></div>
+
+	<script>
+	// Define the ASCII characters to use
+	const asciiChars = ['@', '#', 'S', '%', '?', '*', '+', ';', ':', ',', '.'];
+
+	// Get the canvas and ASCII elements
+	const canvas = document.querySelector('#canvas');
+	const ascii = document.querySelector('#ascii-container');
+	const freezeBtn = document.querySelector('#freezeBtn');
+	const asciiDiv = document.querySelector('#ascii-div');
+	var isFrozen = false;
+	var numLinesFrozen = 0;
+	var frozenLines = "";
+	const renderFreq = 50;
+
+	// Set the dimensions of the canvas
+	const width = canvas.width = 150;
+	const height = canvas.height = 50;
+
+	// Get the webcam video stream
+	navigator.mediaDevices.getUserMedia({ video: true })
+		.then(stream => {
+			// Set the source of the video element to the webcam stream
+			const video = document.createElement('video');
+			video.srcObject = stream;
+			video.play();
+
+			// Start rendering the webcam stream to the canvas
+			const ctx = canvas.getContext('2d');
+			setInterval(() => {
+				ctx.drawImage(video, 0, 0, width, height);
+
+				// Get the pixel data from the canvas
+				const pixels = ctx.getImageData(0, 0, width, height).data;
+
+				// Start rendering the ASCII art
+				const asciiArt = pixelsToAscii(pixels, width, height, asciiChars);
+				ascii.innerHTML  = asciiArt;
+			}, renderFreq);
+		})
+		.catch(err => console.error(err));
+
+	// Convert a pixel array to ASCII art
+	function pixelsToAscii(pixels, width, height, asciiChars) {
+		let asciiArt = '';
+
+		for (let i = 0; i < pixels.length; i += 4) {
+			const r = pixels[i];
+			const g = pixels[i + 1];
+			const b = pixels[i + 2];
+
+			// Convert the pixel color to grayscale
+			const grayScale = (0.299 * r + 0.587 * g + 0.114 * b);
+
+			// Determine the ASCII character to use based on the grayscale value
+			const asciiIndex = Math.floor((grayScale / 255) * (asciiChars.length - 1));
+			const asciiChar = asciiChars[asciiIndex];
+
+			// Add the ASCII character to the output
+			asciiArt += asciiChar;
+
+			// Add a newline character if we've reached the end of a row
+			if ((i + 4) % (4 * width) === 0) {
+				asciiArt += "\n<br/>";
+			}
+		}
+		
+		if (isFrozen == true) {
+			if (numLinesFrozen < asciiArt.split("\n").length) {
+				frozenLines += asciiArt.split("\n")[numLinesFrozen] + "\n";
+				numLinesFrozen ++;
+				const returning = frozenLines + asciiArt.split("\n").slice(numLinesFrozen).join("\n");
+				return returning;
+			} else {
+				return frozenLines;
+			}
+		} else {
+			return asciiArt;
+		}
+
+	}
+
+	freezeBtn.addEventListener('click', function() {
+		isFrozen = true;
+	});
+
+	function refreshPage() {
+	  location.reload();
+	}
+	
+	</script>
+</body>
+</html>
